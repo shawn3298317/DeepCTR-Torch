@@ -1,0 +1,1279 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "DEEPCTR-TORCH" "1" "Mar 27, 2024" "" "DeepCTR-Torch"
+.SH NAME
+deepctr-torch \- DeepCTR-Torch Documentation
+.sp
+\fI\%Downloads\fP \fI\%Stars\fP \fI\%Forks\fP \fI\%PyPi\fP \fI\%Issues\fP \fI\%Chat\fP
+.sp
+DeepCTR\-Torch is a \fBEasy\-to\-use\fP , \fBModular\fP and \fBExtendible\fP package of deep\-learning based CTR models along with lots of core components layer  which can be used to build your own custom model easily.It is compatible with \fBPyTorch\fP\&.You can use any complex model with \fBmodel.fit()\fP and \fBmodel.predict()\fP\&.
+.sp
+Let\(aqs \fI\%Get Started!\fP (\fI\%Chinese Introduction\fP)
+.sp
+You can read the latest code at \fI\%https://github.com/shenweichen/DeepCTR\-Torch\fP and \fI\%DeepCTR\fP for tensorflow version.
+.SH NEWS
+.sp
+10/22/2022 : Add multi\-task models: SharedBottom, ESMM, MMOE, PLE. \fI\%Changelog\fP
+.sp
+06/19/2022 : Fix some bugs.  \fI\%Changelog\fP
+.sp
+06/14/2021 : Add \fI\%AFN\fP and fix some bugs.  \fI\%Changelog\fP
+.SH DISSCUSSIONGROUP
+.INDENT 0.0
+.INDENT 3.5
+公众号：\fB浅梦学习笔记\fP  wechat ID:\ \fBdeepctrbot\fP
+.sp
+\fI\%Discussions\fP \fI\%学习小组主题集合\fP
+.UNINDENT
+.UNINDENT
+[image]
+# Quick\-Start
+.sp
+## Installation Guide
+\fIdeepctr\-torch\fP depends on torch>=1.2.0, you can specify to install it through \fIpip\fP\&.
+.sp
+\fB\(gabash
+$ pip install \-U deepctr\-torch
+\(ga\fP
+## Getting started: 4 steps to DeepCTR\-Torch
+.sp
+### Step 1: Import model
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+import pandas as pd
+import torch
+from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+.sp
+from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
+.sp
+data = pd.read_csv(\(aq./criteo_sample.txt\(aq)
+.sp
+sparse_features = [\(aqC\(aq + str(i) for i in range(1, 27)]
+dense_features = [\(aqI\(aq + str(i) for i in range(1, 14)]
+.sp
+data[sparse_features] = data[sparse_features].fillna(\(aq\-1\(aq, )
+data[dense_features] = data[dense_features].fillna(0, )
+target = [\(aqlabel\(aq]
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.sp
+### Step 2: Simple preprocessing
+.sp
+Usually there are two simple way to encode the sparse categorical feature for embedding
+.INDENT 0.0
+.IP \(bu 2
+Label Encoding: map the features to integer value from 0 ~ len(#unique) \- 1
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+for feat in sparse_features:
+.INDENT 2.0
+.INDENT 3.5
+lbe = LabelEncoder()
+data[feat] = lbe.fit_transform(data[feat])
+.UNINDENT
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.IP \(bu 2
+Hash Encoding: 【Currently not supported】.
+.UNINDENT
+.sp
+And for dense numerical features,they are usually  discretized to buckets,here we use normalization.
+.sp
+\fB\(gapython
+mms = MinMaxScaler(feature_range=(0,1))
+data[dense_features] = mms.fit_transform(data[dense_features])
+\(ga\fP
+.sp
+### Step 3: Generate feature columns
+.sp
+For sparse features, we transform them into dense vectors by embedding techniques.
+For dense numerical features, we concatenate them to the input tensors of fully connected layer.
+.INDENT 0.0
+.IP \(bu 2
+Label Encoding
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+fixlen_feature_columns = [SparseFeat(feat, vocabulary_size=data[feat].nunique(),embedding_dim=4)
+.INDENT 0.0
+.INDENT 3.5
+.INDENT 0.0
+.INDENT 3.5
+for i,feat in enumerate(sparse_features)] + [DenseFeat(feat, 1,)
+.UNINDENT
+.UNINDENT
+.sp
+for feat in dense_features]
+.UNINDENT
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+\(ga
+\- Feature Hashing on the fly【currently not supported】
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+fixlen_feature_columns = [SparseFeat(feat, vocabulary_size=1e6,embedding_dim=4, use_hash=True, dtype=\(aqstring\(aq)  # since the input is string
+.INDENT 0.0
+.INDENT 3.5
+.INDENT 0.0
+.INDENT 3.5
+for feat in sparse_features] + [DenseFeat(feat, 1, )
+.UNINDENT
+.UNINDENT
+.sp
+for feat in dense_features]
+.UNINDENT
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+\(ga
+\- generate feature columns
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+dnn_feature_columns = sparse_feature_columns + dense_feature_columns
+linear_feature_columns = sparse_feature_columns + dense_feature_columns
+.sp
+feature_names = get_feature_names(linear_feature_columns + dnn_feature_columns)
+.sp
+
+.nf
+\(ga\(ga
+.fi
+\(ga
+### Step 4: Generate the training samples and train the model
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+train, test = train_test_split(data, test_size=0.2)
+train_model_input = {name:train[name] for name in feature_names}
+.sp
+test_model_input = {name:test[name] for name in feature_names}
+.sp
+device = \(aqcpu\(aq
+use_cuda = True
+if use_cuda and torch.cuda.is_available():
+.INDENT 0.0
+.INDENT 3.5
+print(\(aqcuda ready...\(aq)
+device = \(aqcuda:0\(aq
+.UNINDENT
+.UNINDENT
+.sp
+model = DeepFM(linear_feature_columns,dnn_feature_columns,task=\(aqbinary\(aq,device=device)
+model.compile("adam", "binary_crossentropy",
+.INDENT 0.0
+.INDENT 3.5
+metrics=[\(aqbinary_crossentropy\(aq], )
+.UNINDENT
+.UNINDENT
+.sp
+history = model.fit(train_model_input,train[target].values,batch_size=256,epochs=10,verbose=2,validation_split=0.2)
+pred_ans = model.predict(test_model_input, batch_size=256)
+.sp
+
+.nf
+\(ga\(ga
+.fi
+\(ga
+You can check the full code [here](./Examples.html#classification\-criteo).
+# Features
+.sp
+## Overview
+.sp
+With the great success of deep learning,DNN\-based techniques have been widely used in CTR estimation task.
+.sp
+DNN based CTR estimation models consists of the following 4 modules:
+\fIInput,Embedding,Low\-order&High\-order Feature Extractor,Prediction\fP
+.INDENT 0.0
+.IP \(bu 2
+Input&Embedding
+.UNINDENT
+.INDENT 0.0
+.TP
+.B >  The  data in CTR estimation task  usually includes high sparse,high cardinality
+categorical features  and some dense numerical features.
+.TP
+.B >  Since DNN are good at handling dense numerical features,we usually map the sparse categorical
+.INDENT 7.0
+.INDENT 3.5
+features to dense numerical through \fIembedding technique\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+> For numerical features,we usually apply \fIdiscretization\fP or \fInormalization\fP on them.
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Feature Extractor
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+> Low\-order Extractor learns feature interaction through  product between vectors.Factorization\-Machine and it\(aqs variants are widely used to learn the low\-order feature interaction.
+.sp
+> High\-order Extractor learns feature combination through complex neural network functions like MLP,Cross Net,etc.
+.UNINDENT
+.UNINDENT
+.sp
+## Feature Columns
+### SparseFeat
+\fBSparseFeat\fP is a namedtuple with signature \fBSparseFeat(name, vocabulary_size, embedding_dim, use_hash, dtype,embedding_name, group_name)\fP
+.INDENT 0.0
+.IP \(bu 2
+name : feature name
+.IP \(bu 2
+vocabulary_size : number of unique feature values for sprase feature or hashing space when \fIuse_hash=True\fP
+.IP \(bu 2
+embedding_dim : embedding dimension
+.IP \(bu 2
+use_hash : defualt \fIFalse\fP\&.If \fITrue\fP the input will be hashed to space of size \fIvocabulary_size\fP\&.
+.IP \(bu 2
+dtype : default \fIfloat32\fP\&.dtype of input tensor.
+.IP \(bu 2
+embedding_name : default \fINone\fP\&. If None, the embedding_name will be same as \fIname\fP\&.
+.IP \(bu 2
+group_name : feature group of this feature.
+.UNINDENT
+.sp
+### DenseFeat
+\fBDenseFeat\fP is a namedtuple with signature \fBDenseFeat(name, dimension, dtype)\fP
+.INDENT 0.0
+.IP \(bu 2
+name : feature name
+.IP \(bu 2
+dimension : dimension of dense feature vector.
+.IP \(bu 2
+dtype : default \fIfloat32\fP\&.dtype of input tensor.
+.UNINDENT
+.sp
+### VarLenSparseFeat
+.sp
+\fBVarLenSparseFeat\fP is a namedtuple with signature \fBVarLenSparseFeat(sparsefeat, maxlen, combiner, length_name)\fP
+.INDENT 0.0
+.IP \(bu 2
+sparsefeat : a instance of \fISparseFeat\fP
+.IP \(bu 2
+maxlen : maximum length of this feature for all samples
+.IP \(bu 2
+combiner : pooling method,can be \fBsum\fP,\(ga\(gamean\(ga\(ga or \fBmax\fP
+.IP \(bu 2
+length_name : feature length name,if \fINone\fP, value 0 in feature is for padding.
+.UNINDENT
+.sp
+## Models
+.sp
+### CCPM (Convolutional Click Prediction Model)
+.sp
+CCPM can extract local\-global key features from an input instance with varied elements, which can be implemented for not only single ad impression but also sequential ad impression.
+.sp
+[\fBCCPM Model API\fP](./deepctr_torch.models.ccpm.html)
+![CCPM](../pics/CCPM.png)
+.sp
+[Liu Q, Yu F, Wu S, et al. A convolutional click prediction model[C]//Proceedings of the 24th ACM International on Conference on Information and Knowledge Management. ACM, 2015: 1743\-1746.](\fI\%http://ir.ia.ac.cn/bitstream/173211/12337/1/A%20Convolutional%20Click%20Prediction%20Model.pdf\fP)
+.sp
+### PNN (Product\-based Neural Network)
+.sp
+PNN concatenates sparse feature embeddings and the product between  embedding vectors as the input of MLP.
+.sp
+[\fBPNN Model API\fP](./deepctr_torch.models.pnn.html)
+.sp
+![PNN](../pics/PNN.png)
+.sp
+[Qu Y, Cai H, Ren K, et al. Product\-based neural networks for user response prediction[C]//Data Mining (ICDM), 2016 IEEE 16th International Conference on. IEEE, 2016: 1149\-1154.](\fI\%https://arxiv.org/pdf/1611.00144.pdf\fP)
+.sp
+### Wide & Deep
+.sp
+WDL\(aqs deep part concatenates sparse feature embeddings as the input of MLP,the wide part use handcrafted feature as input.
+The logits of deep part and wide part are added to get the prediction probability.
+.sp
+[\fBWDL Model API\fP](./deepctr_torch.models.wdl.html)
+.sp
+![WDL](../pics/WDL.png)
+.sp
+[Cheng H T, Koc L, Harmsen J, et al. Wide & deep learning for recommender systems[C]//Proceedings of the 1st Workshop on Deep Learning for Recommender Systems. ACM, 2016: 7\-10.](\fI\%https://arxiv.org/pdf/1606.07792.pdf\fP)
+.sp
+### DeepFM
+.sp
+DeepFM can be seen as an improvement of WDL and FNN.Compared with WDL,DeepFM use
+FM instead of LR in the wide part and use concatenation of embedding vectors as the input of MLP in the deep part.
+Compared with FNN,the embedding vector of FM and input to MLP are same.
+And they do not need a FM pretrained vector to initialiaze,they are learned end2end.
+.sp
+[\fBDeepFM Model API\fP](./deepctr_torch.models.deepfm.html)
+.sp
+![DeepFM](../pics/DeepFM.png)
+.sp
+[Guo H, Tang R, Ye Y, et al. Deepfm: a factorization\-machine based neural network for ctr prediction[J]. arXiv preprint arXiv:1703.04247, 2017.](http://www.ijcai.org/proceedings/2017/0239.pdf)
+.sp
+### MLR(Mixed Logistic Regression/Piece\-wise Linear Model)
+.sp
+MLR can be viewed as a combination of $2m$ LR model, $m$  is the piece(region) number.
+$m$ LR model learns the weight that the sample belong to each region,another m LR model learn sample\(aqs click probability in the region.
+Finally,the sample\(aqs CTR is a weighted sum of each region\(aqs click probability.Notice the weight is normalized weight.
+.sp
+[\fBMLR Model API\fP](./deepctr_torch.models.mlr.html)
+.sp
+![MLR](../pics/MLR.png)
+.sp
+[Gai K, Zhu X, Li H, et al. Learning Piece\-wise Linear Models from Large Scale Data for Ad Click Prediction[J]. arXiv preprint arXiv:1704.05194, 2017.](http://arxiv.org/abs/1704.05194)
+.sp
+### NFM (Neural Factorization Machine)
+.sp
+NFM use a bi\-interaction pooling layer to learn feature interaction between
+embedding vectors and compress the result into a singe vector which has the same size as a single embedding vector.
+And then fed it into a MLP.The output logit of MLP and the output logit of linear part are added to get the prediction probability.
+.sp
+[\fBNFM Model API\fP](./deepctr_torch.models.nfm.html)
+.sp
+![NFM](../pics/NFM.png)
+.sp
+[He X, Chua T S. Neural factorization machines for sparse predictive analytics[C]//Proceedings of the 40th International ACM SIGIR conference on Research and Development in Information Retrieval. ACM, 2017: 355\-364.](\fI\%https://arxiv.org/pdf/1708.05027.pdf\fP)
+.sp
+### AFM (Attentional Factorization Machine)
+.sp
+AFM is a variant of FM,tradional FM sums the inner product of embedding vector uniformly.
+AFM can be seen as weighted sum of feature interactions.The weight is learned by a small MLP.
+.sp
+[\fBAFM Model API\fP](./deepctr_torch.models.afm.html)
+.sp
+![AFM](../pics/AFM.png)
+.sp
+[Xiao J, Ye H, He X, et al. Attentional factorization machines: Learning the weight of feature interactions via attention networks[J]. arXiv preprint arXiv:1708.04617, 2017.](http://www.ijcai.org/proceedings/2017/435)
+.sp
+### DCN (Deep & Cross Network)
+.sp
+DCN use a Cross Net to learn both low and high order feature interaction explicitly,and use a MLP to learn feature interaction implicitly.
+The output of Cross Net and MLP are concatenated.The concatenated vector are feed into one fully connected layer to get the prediction probability.
+.sp
+[\fBDCN Model API\fP](./deepctr_torch.models.dcn.html)
+.sp
+![DCN](../pics/DCN.png)
+.sp
+![Cross Net in DCN\-M](../pics/DCN\-M.png)
+.sp
+[Wang R, Fu B, Fu G, et al. Deep & cross network for ad click predictions[C]//Proceedings of the ADKDD\(aq17. ACM, 2017: 12.](\fI\%https://arxiv.org/abs/1708.05123\fP)
+.sp
+### DCN\-Mix (Improved Deep & Cross Network with mix of experts and matrix kernel)
+.sp
+DCN\-Mix uses a matrix kernel instead of vector kernel in CrossNet compared with DCN,and it uses mixture of experts to learn feature interactions.
+.sp
+[\fBDCN\-Mix Model API\fP](./deepctr_torch.models.dcnmix.html)
+.sp
+![DCN\-Mix](../pics/DCN\-Mix.png)
+.sp
+[Wang R, Shivanna R, Cheng D Z, et al. DCN\-M: Improved Deep & Cross Network for Feature Cross Learning in Web\-scale Learning to Rank Systems[J]. arXiv preprint arXiv:2008.13535, 2020.
+](https://arxiv.org/abs/2008.13535)
+.sp
+### DIN (Deep Interest Network)
+.sp
+DIN introduce a attention method to learn from sequence(multi\-valued) feature.
+Tradional method usually use sum/mean pooling on sequence feature.
+DIN use a local activation unit to get the activation score between candidate item and history items.
+User\(aqs interest are represented by weighted sum of user behaviors.
+user\(aqs interest vector and other embedding vectors are concatenated and fed into a MLP to get the prediction.
+.sp
+[\fBDIN Model API\fP](./deepctr_torch.models.din.html)
+.sp
+[DIN example](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/tree/master/examples/run_din.py\fP)
+.sp
+![DIN](../pics/DIN.png)
+.sp
+[Zhou G, Zhu X, Song C, et al. Deep interest network for click\-through rate prediction[C]//Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining. ACM, 2018: 1059\-1068.](\fI\%https://arxiv.org/pdf/1706.06978.pdf\fP)
+.sp
+### DIEN (Deep Interest Evolution Network)
+.sp
+Deep Interest Evolution Network (DIEN) uses interest extractor layer to capture temporal interests from history behavior sequence. At this layer,  an auxiliary loss is proposed to supervise interest extracting at each step. As user interests are diverse, especially in the e\-commerce system, interest evolving layer is proposed to capture interest evolving process that is relative to the target item. At interest evolving layer, attention mechanism is embedded into the sequential structure novelly, and the effects of relative interests are strengthened during interest evolution.
+.sp
+[\fBDIEN Model API\fP](./deepctr_torch.models.dien.html)
+.sp
+[DIEN example](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/tree/master/examples/run_dien.py\fP)
+.sp
+![DIEN](../pics/DIEN.png)
+.sp
+[Zhou G, Mou N, Fan Y, et al. Deep Interest Evolution Network for Click\-Through Rate Prediction[J]. arXiv preprint arXiv:1809.03672, 2018.](https://arxiv.org/pdf/1809.03672.pdf)
+.sp
+### xDeepFM
+.sp
+xDeepFM use a Compressed Interaction Network (CIN) to learn both low and high order feature interaction explicitly,and use a MLP to learn feature interaction implicitly.
+In each layer of CIN,first compute outer products between $x^k$ and $x_0$ to get a tensor $Z_{k+1}$,then use a 1DConv to learn feature maps $H_{k+1}$ on this tensor.
+Finally,apply sum pooling on all the feature maps $H_k$ to get one vector.The vector is used to compute the logit that CIN contributes.
+.sp
+[\fBxDeepFM Model API\fP](./deepctr_torch.models.xdeepfm.html)
+.sp
+![CIN](../pics/CIN.png)
+.sp
+![xDeepFM](../pics/xDeepFM.png)
+.sp
+[Lian J, Zhou X, Zhang F, et al. xDeepFM: Combining Explicit and Implicit Feature Interactions for Recommender Systems[J]. arXiv preprint arXiv:1803.05170, 2018.](https://arxiv.org/pdf/1803.05170.pdf)
+.sp
+### AutoInt(Automatic Feature Interaction)
+.sp
+AutoInt use a interacting layer to model the interactions between different features.
+Within each interacting layer, each feature is allowed to interact with all the other features and is able to automatically identify relevant features to form meaningful higher\-order features via the multi\-head attention mechanism.
+By stacking multiple interacting layers,AutoInt is able to model different orders of feature interactions.
+.sp
+[\fBAutoInt Model API\fP](./deepctr_torch.models.autoint.html)
+.sp
+![InteractingLayer](../pics/InteractingLayer.png)
+.sp
+![AutoInt](../pics/AutoInt.png)
+.sp
+[Song W, Shi C, Xiao Z, et al. AutoInt: Automatic Feature Interaction Learning via Self\-Attentive Neural Networks[J]. arXiv preprint arXiv:1810.11921, 2018.](https://arxiv.org/abs/1810.11921)
+.sp
+### ONN(Operation\-aware Neural Networks for User Response Prediction)
+.sp
+ONN models second order feature interactions like like FFM and preserves second\-order interaction information  as much as possible.Further more,deep neural network is used to learn higher\-ordered feature interactions.
+.sp
+[\fBONN Model API\fP](./deepctr_torch.models.onn.html)
+.sp
+![ONN](../pics/ONN.png)
+.sp
+[Yang Y, Xu B, Shen F, et al. Operation\-aware Neural Networks for User Response Prediction[J]. arXiv preprint arXiv:1904.12579, 2019.](https://arxiv.org/pdf/1904.12579.pdf)
+.sp
+### FiBiNET(Feature Importance and Bilinear feature Interaction NETwork)
+.sp
+Feature Importance and Bilinear feature Interaction NETwork is proposed to dynamically learn the feature importance and fine\-grained feature interactions. On the one hand, the FiBiNET can dynamically learn the importance of fea\- tures via the Squeeze\-Excitation network (SENET) mechanism; on the other hand, it is able to effectively learn the feature interactions via bilinear function.
+.sp
+[\fBFiBiNET Model API\fP](./deepctr_torch.models.fibinet.html)
+.sp
+![FiBiNET](../pics/FiBiNET.png)
+.sp
+[Huang T, Zhang Z, Zhang J. FiBiNET: Combining Feature Importance and Bilinear feature Interaction for Click\-Through Rate Prediction[J]. arXiv preprint arXiv:1905.09433, 2019.](https://arxiv.org/pdf/1905.09433.pdf)
+.sp
+### IFM(Input\-aware Factorization Machine)
+.sp
+Input\-aware Factorization Machine (IFM) learns a unique input\-aware factor for the same feature in different instances via a neural network.
+.sp
+[\fBIFM Model API\fP](./deepctr_torch.models.ifm.html)
+.sp
+![IFM](../pics/IFM.png)
+.sp
+[Yu Y, Wang Z, Yuan B. An Input\-aware Factorization Machine for Sparse Prediction[C]//IJCAI. 2019: 1466\-1472.](\fI\%https://www.ijcai.org/Proceedings/2019/0203.pdf\fP)
+.sp
+### DIFM(Dual Input\-aware Factorization Machine)
+.sp
+Dual Inputaware Factorization Machines (DIFM) can adaptively reweight the original feature representations at the bit\-wise and vector\-wise levels simultaneously.Furthermore, DIFMs strategically integrate various components including Multi\-Head Self\-Attention, Residual Networks and DNNs into a unified end\-to\-end model.
+.sp
+[\fBDFM Model API\fP](./deepctr_torch.models.difm.html)
+.sp
+![DIFM](../pics/DIFM.png)
+.sp
+[Lu W, Yu Y, Chang Y, et al. A Dual Input\-aware Factorization Machine for CTR Prediction[C]//IJCAI. 2020: 3139\-3145.](\fI\%https://www.ijcai.org/Proceedings/2020/0434.pdf\fP)
+.sp
+### AFN(Adaptive Factorization Network: Learning Adaptive\-Order Feature Interactions)
+.sp
+Adaptive Factorization Network (AFN) can learn arbitrary\-order cross features adaptively from data. The core of AFN is a logarith\- mic transformation layer to convert the power of each feature in a feature combination into the coefficient to be learned.
+[\fBAFN Model API\fP](./deepctr_torch.models.afn.html)
+.sp
+![AFN](../pics/AFN.jpg)
+.sp
+[Cheng, W., Shen, Y. and Huang, L. 2020. Adaptive Factorization Network: Learning Adaptive\-Order Feature Interactions. Proceedings of the AAAI Conference on Artificial Intelligence. 34, 04 (Apr. 2020), 3609\-3616.](\fI\%https://arxiv.org/pdf/1909.03276\fP)
+.sp
+## MultiTask Models
+.sp
+### SharedBottom
+.sp
+Hard parameter sharing is the most commonly used approach to MTL in neural networks. It is generally applied by sharing the hidden layers between all tasks, while keeping several task\-specific output layers.
+.sp
+[\fBSharedBottom Model API\fP](./deepctr_torch.models.multitask.sharedbottom.html)
+.sp
+![SharedBottom](../pics/multitaskmodels/SharedBottom.png)
+.sp
+[Ruder S. An overview of multi\-task learning in deep neural networks[J]. arXiv preprint arXiv:1706.05098, 2017.](https://arxiv.org/pdf/1706.05098.pdf)
+.sp
+### ESMM(Entire Space Multi\-task Model)
+.sp
+ESMM models CVR in a brand\-new perspective by making good use of sequential pattern of user actions, i.e., impression →
+click → conversion. The proposed Entire Space Multi\-task Model (ESMM) can eliminate the two problems simultaneously by
+i) modeling CVR directly over the entire space, ii) employing a feature representation transfer learning strategy.
+.sp
+[\fBESMM Model API\fP](./deepctr_torch.models.multitask.esmm.html)
+.sp
+![ESMM](../pics/multitaskmodels/ESMM.png)
+.sp
+[Ma X, Zhao L, Huang G, et al. Entire space multi\-task model: An effective approach for estimating post\-click conversion rate[C]//The 41st International ACM SIGIR Conference on Research & Development in Information Retrieval. 2018.](\fI\%https://dl.acm.org/doi/10.1145/3209978.3210104\fP)
+.sp
+### MMOE(Multi\-gate Mixture\-of\-Experts)
+.sp
+Multi\-gate Mixture\-of\-Experts (MMoE) explicitly learns to model task relationships from data. We adapt the Mixture\-of\-
+Experts (MoE) structure to multi\-task learning by sharing the expert submodels across all tasks, while also having a
+gating network trained to optimize each task.
+.sp
+[\fBMMOE Model API\fP](./deepctr_torch.models.multitask.mmoe.html)
+.sp
+![MMOE](../pics/multitaskmodels/MMOE.png)
+.sp
+[Ma J, Zhao Z, Yi X, et al. Modeling task relationships in multi\-task learning with multi\-gate mixture\-of\-experts[C]//Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining. 2018.](\fI\%https://dl.acm.org/doi/abs/10.1145/3219819.3220007\fP)
+.sp
+### PLE(Progressive Layered Extraction)
+.sp
+PLE separates shared components and task\-specific components explicitly and adopts a progressive rout\- ing mechanism to
+extract and separate deeper semantic knowledge gradually, improving efficiency of joint representation learning and
+information routing across tasks in a general setup.
+.sp
+[\fBPLE Model API\fP](./deepctr_torch.models.multitask.ple.html)
+.sp
+![PLE](../pics/multitaskmodels/PLE.png)
+.sp
+[Tang H, Liu J, Zhao M, et al. Progressive layered extraction (ple): A novel multi\-task learning (mtl) model for personalized recommendations[C]//Fourteenth ACM Conference on Recommender Systems. 2020.](\fI\%https://dl.acm.org/doi/10.1145/3383313.3412236\fP)
+.sp
+## Layers
+.sp
+The models of deepctr are modular,
+so you can use different modules to build your own models.
+.sp
+You can see layers API in [Layers](./Layers.html)
+# Examples
+.sp
+## Classification: Criteo
+.sp
+The Criteo Display Ads dataset is for the purpose of predicting ads
+click\-through rate. It has 13 integer features and
+26 categorical features where each category has a high cardinality.
+.sp
+![image](../pics/criteo_sample.png)
+.sp
+In this example,we simply normailize the dense feature between 0 and 1,you
+can try other transformation technique like log normalization or discretization.Then we use [SparseFeat](./Features.html#sparsefeat) and [DenseFeat](./Features.html#densefeat) to generate feature columns  for sparse features and dense features.
+.sp
+This example shows how to use \fBDeepFM\fP to solve a simple binary classification task. You can get the demo data [criteo_sample.txt](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/tree/master/examples/criteo_sample.txt\fP)
+and run the following codes.
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+import pandas as pd
+import torch
+from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+.sp
+from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
+from deepctr_torch.models import *
+.INDENT 0.0
+.TP
+.B if __name__ == "__main__":
+data = pd.read_csv(\(aq./criteo_sample.txt\(aq)
+.sp
+sparse_features = [\(aqC\(aq + str(i) for i in range(1, 27)]
+dense_features = [\(aqI\(aq + str(i) for i in range(1, 14)]
+.sp
+data[sparse_features] = data[sparse_features].fillna(\(aq\-1\(aq, )
+data[dense_features] = data[dense_features].fillna(0, )
+target = [\(aqlabel\(aq]
+.sp
+# 1.Label Encoding for sparse features,and do simple Transformation for dense features
+for feat in sparse_features:
+.INDENT 7.0
+.INDENT 3.5
+lbe = LabelEncoder()
+data[feat] = lbe.fit_transform(data[feat])
+.UNINDENT
+.UNINDENT
+.sp
+mms = MinMaxScaler(feature_range=(0, 1))
+data[dense_features] = mms.fit_transform(data[dense_features])
+.sp
+# 2.count #unique features for each sparse field,and record dense feature field name
+.INDENT 7.0
+.TP
+.B fixlen_feature_columns = [SparseFeat(feat, data[feat].nunique())
+.INDENT 7.0
+.TP
+.B for feat in sparse_features] + [DenseFeat(feat, 1, )
+for feat in dense_features]
+.UNINDENT
+.UNINDENT
+.sp
+dnn_feature_columns = fixlen_feature_columns
+linear_feature_columns = fixlen_feature_columns
+.INDENT 7.0
+.TP
+.B feature_names = get_feature_names(
+linear_feature_columns + dnn_feature_columns)
+.UNINDENT
+.sp
+# 3.generate input data for model
+.sp
+train, test = train_test_split(data, test_size=0.2)
+.sp
+train_model_input = {name: train[name] for name in feature_names}
+test_model_input = {name: test[name] for name in feature_names}
+.sp
+# 4.Define Model,train,predict and evaluate
+.sp
+device = \(aqcpu\(aq
+use_cuda = True
+if use_cuda and torch.cuda.is_available():
+.INDENT 7.0
+.INDENT 3.5
+print(\(aqcuda ready...\(aq)
+device = \(aqcuda:0\(aq
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B model = DeepFM(linear_feature_columns=linear_feature_columns, dnn_feature_columns=dnn_feature_columns,
+task=\(aqbinary\(aq,
+l2_reg_embedding=1e\-5, device=device)
+.TP
+.B model.compile("adagrad", "binary_crossentropy",
+metrics=["binary_crossentropy", "auc"], )
+.UNINDENT
+.sp
+model.fit(train_model_input,train[target].values,batch_size=32,epochs=10,verbose=2,validation_split=0.0)
+.sp
+pred_ans = model.predict(test_model_input, 256)
+print("")
+print("test LogLoss", round(log_loss(test[target].values, pred_ans), 4))
+print("test AUC", round(roc_auc_score(test[target].values, pred_ans), 4))
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.sp
+## Regression: Movielens
+.sp
+The MovieLens data has been used for personalized tag recommendation,which
+contains 668, 953 tag applications of users on movies.
+Here is a small fraction of data include  only sparse field.
+.sp
+![image](../pics/movielens_sample.png)
+.sp
+This example shows how to use \fBDeepFM\fP to solve a simple binary regression task. You can get the demo data
+[movielens_sample.txt](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/tree/master/examples/movielens_sample.txt\fP) and run the following codes.
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+import pandas as pd
+import torch
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+.sp
+from deepctr_torch.inputs import SparseFeat, get_feature_names
+from deepctr_torch.models import DeepFM
+.sp
+if __name__ == "__main__":
+.INDENT 0.0
+.INDENT 3.5
+data = pd.read_csv("./movielens_sample.txt")
+sparse_features = ["movie_id", "user_id",
+.INDENT 0.0
+.INDENT 3.5
+"gender", "age", "occupation", "zip"]
+.UNINDENT
+.UNINDENT
+.sp
+target = [\(aqrating\(aq]
+.sp
+# 1.Label Encoding for sparse features,and do simple Transformation for dense features
+for feat in sparse_features:
+.INDENT 0.0
+.INDENT 3.5
+lbe = LabelEncoder()
+data[feat] = lbe.fit_transform(data[feat])
+.UNINDENT
+.UNINDENT
+.sp
+# 2.count #unique features for each sparse field
+fixlen_feature_columns = [SparseFeat(feat, data[feat].nunique())
+.INDENT 0.0
+.INDENT 3.5
+for feat in sparse_features]
+.UNINDENT
+.UNINDENT
+.sp
+linear_feature_columns = fixlen_feature_columns
+dnn_feature_columns = fixlen_feature_columns
+feature_names = get_feature_names(linear_feature_columns + dnn_feature_columns)
+.sp
+# 3.generate input data for model
+train, test = train_test_split(data, test_size=0.2)
+train_model_input = {name: train[name] for name in feature_names}
+test_model_input = {name: test[name] for name in feature_names}
+# 4.Define Model,train,predict and evaluate
+.sp
+device = \(aqcpu\(aq
+use_cuda = True
+if use_cuda and torch.cuda.is_available():
+.INDENT 0.0
+.INDENT 3.5
+print(\(aqcuda ready...\(aq)
+device = \(aqcuda:0\(aq
+.UNINDENT
+.UNINDENT
+.sp
+model = DeepFM(linear_feature_columns, dnn_feature_columns, task=\(aqregression\(aq, device=device)
+model.compile("adam", "mse", metrics=[\(aqmse\(aq], )
+.sp
+history = model.fit(train_model_input,train[target].values,batch_size=256,epochs=10,verbose=2,validation_split=0.2)
+pred_ans = model.predict(test_model_input, batch_size=256)
+print("test MSE", round(mean_squared_error(
+.INDENT 0.0
+.INDENT 3.5
+test[target].values, pred_ans), 4))
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.SS ## Multi\-value Input : Movielens
+.sp
+The MovieLens data has been used for personalized tag recommendation,which
+contains 668, 953 tag applications of users on movies.
+Here is a small fraction of data include  sparse fields and a multivalent field.
+.sp
+![image](../pics/movielens_sample_with_genres.png)
+.sp
+There are 2 additional steps to use DeepCTR with sequence feature input.
+.INDENT 0.0
+.IP 1. 3
+Generate the paded and encoded sequence feature  of sequence input feature(\fBvalue 0 is for padding\fP).
+.IP 2. 3
+Generate config of sequence feature with [VarLenSparseFeat](./Features.html#varlensparsefeat)
+.UNINDENT
+.sp
+This example shows how to use \fBDeepFM\fP with sequence(multi\-value) feature. You can get the demo data
+[movielens_sample.txt](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/tree/master/examples/movielens_sample.txt\fP) and run the following codes.
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+import numpy as np
+import pandas as pd
+import torch
+from sklearn.preprocessing import LabelEncoder
+from tensorflow.python.keras.preprocessing.sequence import pad_sequences
+.sp
+from deepctr_torch.inputs import SparseFeat, VarLenSparseFeat, get_feature_names
+from deepctr_torch.models import DeepFM
+.INDENT 0.0
+.TP
+.B def split(x):
+key_ans = x.split(\(aq|\(aq)
+for key in key_ans:
+.INDENT 7.0
+.INDENT 3.5
+.INDENT 0.0
+.TP
+.B if key not in key2index:
+# Notice : input value 0 is a special "padding",so we do not use 0 to encode valid feature for sequence input
+key2index[key] = len(key2index) + 1
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+return list(map(lambda x: key2index[x], key_ans))
+.TP
+.B if __name__ == "__main__":
+data = pd.read_csv("./movielens_sample.txt")
+sparse_features = ["movie_id", "user_id",
+.INDENT 7.0
+.INDENT 3.5
+"gender", "age", "occupation", "zip", ]
+.UNINDENT
+.UNINDENT
+.sp
+target = [\(aqrating\(aq]
+.sp
+# 1.Label Encoding for sparse features,and process sequence features
+for feat in sparse_features:
+.INDENT 7.0
+.INDENT 3.5
+lbe = LabelEncoder()
+data[feat] = lbe.fit_transform(data[feat])
+.UNINDENT
+.UNINDENT
+.sp
+# preprocess the sequence feature
+.sp
+key2index = {}
+genres_list = list(map(split, data[\(aqgenres\(aq].values))
+genres_length = np.array(list(map(len, genres_list)))
+max_len = max(genres_length)
+# Notice : padding=\(gapost\(ga
+genres_list = pad_sequences(genres_list, maxlen=max_len, padding=\(aqpost\(aq, )
+.sp
+# 2.count #unique features for each sparse field and generate feature config for sequence feature
+.INDENT 7.0
+.TP
+.B fixlen_feature_columns = [SparseFeat(feat, data[feat].nunique(), embedding_dim=4)
+for feat in sparse_features]
+.TP
+.B varlen_feature_columns = [VarLenSparseFeat(SparseFeat(\(aqgenres\(aq, vocabulary_size=len(
+key2index) + 1, embedding_dim=4), maxlen=max_len, combiner=\(aqmean\(aq)]  # Notice : value 0 is for padding for sequence input feature
+.UNINDENT
+.sp
+linear_feature_columns = fixlen_feature_columns + varlen_feature_columns
+dnn_feature_columns = fixlen_feature_columns + varlen_feature_columns
+.sp
+feature_names = get_feature_names(linear_feature_columns + dnn_feature_columns)
+.sp
+# 3.generate input data for model
+model_input = {name: data[name] for name in sparse_features}  #
+model_input["genres"] = genres_list
+.sp
+# 4.Define Model,compile and train
+.sp
+device = \(aqcpu\(aq
+use_cuda = True
+if use_cuda and torch.cuda.is_available():
+.INDENT 7.0
+.INDENT 3.5
+print(\(aqcuda ready...\(aq)
+device = \(aqcuda:0\(aq
+.UNINDENT
+.UNINDENT
+.sp
+model = DeepFM(linear_feature_columns, dnn_feature_columns, task=\(aqregression\(aq, device=device)
+.sp
+model.compile("adam", "mse", metrics=[\(aqmse\(aq], )
+history = model.fit(model_input,data[target].values,batch_size=256,epochs=10,verbose=2,validation_split=0.2)
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.sp
+## MultiTask Learning:MMOE
+.sp
+This example shows how to use \fBMMOE\fP to solve a multi task learning problem. You can get the demo
+data [byterec_sample.txt](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/tree/master/examples/byterec_sample.txt\fP) and run
+the following codes.
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+import pandas as pd
+import torch
+from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+.sp
+from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
+from deepctr_torch.models import *
+.INDENT 0.0
+.TP
+.B if __name__ == "__main__":
+# data description can be found in \fI\%https://www.biendata.xyz/competition/icmechallenge2019/\fP
+data = pd.read_csv(\(aq./byterec_sample.txt\(aq, sep=\(aqt\(aq,
+.INDENT 7.0
+.INDENT 3.5
+.INDENT 0.0
+.TP
+.B names=["uid", "user_city", "item_id", "author_id", "item_city", "channel", "finish", "like",
+"music_id", "device", "time", "duration_time"])
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+sparse_features = ["uid", "user_city", "item_id", "author_id", "item_city", "channel", "music_id", "device"]
+dense_features = ["duration_time"]
+.sp
+target = [\(aqfinish\(aq, \(aqlike\(aq]
+.sp
+# 1.Label Encoding for sparse features,and do simple Transformation for dense features
+for feat in sparse_features:
+.INDENT 7.0
+.INDENT 3.5
+lbe = LabelEncoder()
+data[feat] = lbe.fit_transform(data[feat])
+.UNINDENT
+.UNINDENT
+.sp
+mms = MinMaxScaler(feature_range=(0, 1))
+data[dense_features] = mms.fit_transform(data[dense_features])
+.sp
+# 2.count #unique features for each sparse field,and record dense feature field name
+.INDENT 7.0
+.TP
+.B fixlen_feature_columns = [SparseFeat(feat, vocabulary_size=data[feat].max() + 1, embedding_dim=4)
+.INDENT 7.0
+.TP
+.B for feat in sparse_features] + [DenseFeat(feat, 1, )
+for feat in dense_features]
+.UNINDENT
+.UNINDENT
+.sp
+dnn_feature_columns = fixlen_feature_columns
+linear_feature_columns = fixlen_feature_columns
+.INDENT 7.0
+.TP
+.B feature_names = get_feature_names(
+linear_feature_columns + dnn_feature_columns)
+.UNINDENT
+.sp
+# 3.generate input data for model
+.sp
+split_boundary = int(data.shape[0] * 0.8)
+train, test = data[:split_boundary], data[split_boundary:]
+train_model_input = {name: train[name] for name in feature_names}
+test_model_input = {name: test[name] for name in feature_names}
+.sp
+# 4.Define Model,train,predict and evaluate
+device = \(aqcpu\(aq
+use_cuda = True
+if use_cuda and torch.cuda.is_available():
+.INDENT 7.0
+.INDENT 3.5
+print(\(aqcuda ready...\(aq)
+device = \(aqcuda:0\(aq
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B model = MMOE(dnn_feature_columns, task_types=[\(aqbinary\(aq, \(aqbinary\(aq],
+l2_reg_embedding=1e\-5, task_names=target, device=device)
+.TP
+.B model.compile("adagrad", loss=["binary_crossentropy", "binary_crossentropy"],
+metrics=[\(aqbinary_crossentropy\(aq], )
+.UNINDENT
+.sp
+history = model.fit(train_model_input, train[target].values, batch_size=32, epochs=10, verbose=2)
+pred_ans = model.predict(test_model_input, 256)
+print("")
+for i, target_name in enumerate(target):
+.INDENT 7.0
+.INDENT 3.5
+print("%s test LogLoss" % target_name, round(log_loss(test[target[i]].values, pred_ans[:, i]), 4))
+print("%s test AUC" % target_name, round(roc_auc_score(test[target[i]].values, pred_ans[:, i]), 4))
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+# FAQ
+.SS ## 1. Save or load weights/models
+.sp
+To save/load weights:
+.sp
+\fB\(gapython
+import torch
+model = DeepFM(...)
+torch.save(model.state_dict(), \(aqDeepFM_weights.h5\(aq)
+model.load_state_dict(torch.load(\(aqDeepFM_weights.h5\(aq))
+\(ga\fP
+.sp
+To save/load models:
+.sp
+\fB\(gapython
+import torch
+model = DeepFM(...)
+torch.save(model, \(aqDeepFM.h5\(aq)
+model = torch.load(\(aqDeepFM.h5\(aq)
+\(ga\fP
+.SS ## 2. Set learning rate and use earlystopping
+.sp
+Here is a example of how to set learning rate and earlystopping:
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+from torch.optim import Adagrad
+from deepctr_torch.models import DeepFM
+from deepctr_torch.callbacks import EarlyStopping, ModelCheckpoint
+.sp
+model = DeepFM(linear_feature_columns,dnn_feature_columns)
+model.compile(Adagrad(model.parameters(),0.1024),\(aqbinary_crossentropy\(aq,metrics=[\(aqbinary_crossentropy\(aq])
+.sp
+es = EarlyStopping(monitor=\(aqval_binary_crossentropy\(aq, min_delta=0, verbose=1, patience=0, mode=\(aqmin\(aq)
+mdckpt = ModelCheckpoint(filepath=\(aqmodel.ckpt\(aq, monitor=\(aqval_binary_crossentropy\(aq, verbose=1, save_best_only=True, mode=\(aqmin\(aq)
+history = model.fit(model_input,data[target].values,batch_size=256,epochs=10,verbose=2,validation_split=0.2,callbacks=[es,mdckpt])
+print(history)
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.sp
+## 3. How to add a long dense feature vector as a input to the model?
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+from deepctr_torch.models import DeepFM
+from deepctr_torch.inputs import DenseFeat,SparseFeat,get_feature_names
+import numpy as np
+.sp
+feature_columns = [SparseFeat(\(aquser_id\(aq,120,),SparseFeat(\(aqitem_id\(aq,60,),DenseFeat("pic_vec",5)]
+fixlen_feature_names = get_feature_names(feature_columns)
+.sp
+user_id = np.array([[1],[0],[1]])
+item_id = np.array([[30],[20],[10]])
+pic_vec = np.array([[0.1,0.5,0.4,0.3,0.2],[0.1,0.5,0.4,0.3,0.2],[0.1,0.5,0.4,0.3,0.2]])
+label = np.array([1,0,1])
+.sp
+model_input = {\(aquser_id\(aq:user_id,\(aqitem_id\(aq:item_id,\(aqpic_vec\(aq:pic_vec}
+.sp
+model = DeepFM(feature_columns,feature_columns)
+model.compile(\(aqadagrad\(aq,\(aqbinary_crossentropy\(aq)
+model.fit(model_input,label)
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.sp
+## 4. How to run the demo with GPU ?
+.sp
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+python
+import torch
+device = \(aqcpu\(aq
+use_cuda = True
+if use_cuda and torch.cuda.is_available():
+.INDENT 0.0
+.INDENT 3.5
+print(\(aqcuda ready...\(aq)
+device = \(aqcuda:0\(aq
+.UNINDENT
+.UNINDENT
+.sp
+model = DeepFM(...,device=device)
+
+.nf
+\(ga\(ga
+.fi
+
+.nf
+\(ga
+.fi
+
+.sp
+## 5. How to run the demo with multiple GPUs ?
+.sp
+\fB\(gapython
+model = DeepFM(..., device=device, gpus=[0, 1])
+\(ga\fP
+# History
+\- 10/22/2022 : [v0.2.9](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.9\fP) released.Add multi\-task models: SharedBottom, ESMM, MMOE, PLE.
+\- 06/19/2022 : [v0.2.8](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.8\fP) released.Fix some bugs.
+\- 06/14/2021 : [v0.2.7](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.7\fP) released.Add [AFN](./Features.html#afn\-adaptive\-factorization\-network\-learning\-adaptive\-order\-feature\-interactions) and fix some bugs.
+\- 04/04/2021 : [v0.2.6](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.6\fP) released.Add [IFM](./Features.html#ifm\-input\-aware\-factorization\-machine) and [DIFM](./Features.html#difm\-dual\-input\-aware\-factorization\-machine);Support multi\-gpus running([example](./FAQ.html#how\-to\-run\-the\-demo\-with\-multiple\-gpus)).
+\- 02/12/2021 : [v0.2.5](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.5\fP) released.Fix bug in DCN\-M.
+\- 12/05/2020 : [v0.2.4](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.4\fP) released.Imporve compatibility & fix issues.Add History callback.([example](\fI\%https://deepctr\-torch.readthedocs.io/en/latest/FAQ.html#set\-learning\-rate\-and\-use\-earlystopping\fP)).
+\- 10/18/2020 : [v0.2.3](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.3\fP) released.Add [DCN\-M](./Features.html#dcn\-deep\-cross\-network)&[DCN\-Mix](./Features.html#dcn\-mix\-improved\-deep\-cross\-network\-with\-mix\-of\-experts\-and\-matrix\-kernel).Add EarlyStopping and ModelCheckpoint callbacks([example](\fI\%https://deepctr\-torch.readthedocs.io/en/latest/FAQ.html#set\-learning\-rate\-and\-use\-earlystopping\fP)).
+\- 10/09/2020 : [v0.2.2](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.2\fP) released.Improve the reproducibility & fix some bugs.
+\- 03/27/2020 : [v0.2.1](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.1\fP) released.Add [DIN](./Features.html#din\-deep\-interest\-network) and [DIEN](./Features.html#dien\-deep\-interest\-evolution\-network) .
+\- 01/31/2020 : [v0.2.0](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.2.0\fP) released.Refactor [feature columns](./Features.html#feature\-columns).Support to use double precision in metric calculation.
+\- 10/03/2019 : [v0.1.3](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.1.3\fP) released.Simplify the input logic.
+\- 09/28/2019 : [v0.1.2](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.1.2\fP) released.Add [sequence(multi\-value) input support](./Examples.html#multi\-value\-input\-movielens).
+\- 09/24/2019 : [v0.1.1](\fI\%https://github.com/shenweichen/DeepCTR\-Torch/releases/tag/v0.1.1\fP) released. Add [CCPM](./Features.html#ccpm\-convolutional\-click\-prediction\-model).
+\- 09/22/2019 : DeepCTR\-Torch first version v0.1.0  is released on [PyPi](\fI\%https://pypi.org/project/deepctr\-torch/\fP)
+.SS DeepCTR\-Torch Models API
+.SS deepctr_torch.models.basemodel module
+.SS deepctr_torch.models.ccpm module
+.SS deepctr_torch.models.pnn module
+.SS deepctr_torch.models.wdl module
+.SS deepctr_torch.models.deepfm module
+.SS deepctr_torch.models.mlr module
+.SS deepctr_torch.models.nfm module
+.SS deepctr_torch.models.afm module
+.SS deepctr_torch.models.dcn module
+.SS deepctr_torch.models.dcnmix module
+.SS deepctr_torch.models.din module
+.SS deepctr_torch.models.dien module
+.SS deepctr_torch.models.xdeepfm module
+.SS deepctr_torch.models.autoint module
+.SS deepctr_torch.models.onn module
+.SS deepctr_torch.models.fibinet module
+.SS deepctr_torch.models.ifm module
+.SS deepctr_torch.models.difm module
+.SS deepctr_torch.models.multitask.sharedbottom module
+.SS deepctr_torch.models.multitask.esmm module
+.SS deepctr_torch.models.multitask.mmoe module
+.SS deepctr_torch.models.multitask.ple module
+.SS DeepCTR\-Torch Layers API
+.SS deepctr_torch.layers.core module
+.SS deepctr_torch.layers.interaction module
+.SS deepctr_torch.layers.sequence module
+.SS deepctr_torch.callbacks module
+.INDENT 0.0
+.IP \(bu 2
+genindex
+.IP \(bu 2
+modindex
+.IP \(bu 2
+search
+.UNINDENT
+.SH AUTHOR
+Weichen Shen
+.SH COPYRIGHT
+2019-present, Weichen Shen
+.\" Generated by docutils manpage writer.
+.
